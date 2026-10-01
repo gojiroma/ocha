@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ouch - 辞書 + ひとりごと</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/icons/favicon.ico" type="image/x-icon">
+    <meta name="theme-color" content="#4a90e2">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+            background-color: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-container {
+            display: flex;
+            flex: 1;
+            width: 100%;
+            padding: 1rem;
+            gap: 1rem;
+        }
+
+        /* Main Container - takes as much width as possible */
+        .main-container {
+            flex: 2;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .search-container {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .search-container input {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .search-container input:focus {
+            outline: none;
+            border-color: #4a90e2;
+        }
+
+        .reading-container {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .reading-container input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .reading-container input:focus {
+            outline: none;
+            border-color: #4a90e2;
+        }
+
+        .content-container {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .item-list {
+            width: 200px;
+            min-width: 0;
+            border-right: 1px solid #eee;
+            overflow-y: auto;
+            background: #f9f9f9;
+        }
+
+        .item-list .item {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .item-list .item:hover {
+            background-color: #e8f4fd;
+        }
+
+        .item-list .item.active {
+            background-color: #4a90e2;
+            color: white;
+        }
+
+        .item-list .item .title {
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .item-list .item .reading {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+
+        .item-list .item.active .reading {
+            color: #e8f4fd;
+        }
+
+        .editor-container {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-container textarea {
+            flex: 1;
+            min-height: 0;
+            padding: 1rem;
+            border: none;
+            resize: none;
+            font-size: 1rem;
+            line-height: 1.5;
+            font-family: inherit;
+        }
+
+        .editor-container textarea:focus {
+            outline: none;
+        }
+
+        /* Mutterings Container - takes remaining width */
+        .mutterings-container {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .mutterings-input-container {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .mutterings-input-container input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .mutterings-input-container input:focus {
+            outline: none;
+            border-color: #4a90e2;
+        }
+
+        .mutterings-timeline {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .muttering-item {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+            background: #f9f9f9;
+            transition: background-color 0.2s;
+        }
+
+        .muttering-item:hover {
+            background: #e8f4fd;
+        }
+
+        .muttering-item .content {
+            font-size: 0.9rem;
+            line-height: 1.4;
+            margin-bottom: 0.25rem;
+        }
+
+        .muttering-item .timestamp {
+            font-size: 0.75rem;
+            color: #666;
+            text-align: right;
+        }
+
+        /* Sync Status Indicator */
+        .sync-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            font-size: 0.85rem;
+            z-index: 1000;
+        }
+
+        .sync-status {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .sync-status.connected {
+            background-color: #4CAF50;
+        }
+
+        .sync-status.disconnected {
+            background-color: #f44336;
+        }
+
+        .sync-status.syncing {
+            background-color: #FFC107;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Loading spinner */
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border-top-color: #4a90e2;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Empty state */
+        .empty-state {
+            padding: 2rem;
+            text-align: center;
+            color: #999;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+
+            .main-container,
+            .mutterings-container {
+                flex: none;
+            }
+
+            .content-container {
+                flex-direction: column;
+            }
+
+            .item-list {
+                width: 100%;
+                max-height: 200px;
+            }
+
+            .mutterings-container {
+                max-height: 300px;
+            }
+
+            .sync-indicator {
+                top: auto;
+                bottom: 10px;
+                right: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Main Container -->
+        <div class="main-container">
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="検索...">
+            </div>
+
+            <div class="reading-container" id="readingContainer" style="display: none;">
+                <input type="text" id="readingInput" placeholder="読み...">
+            </div>
+
+            <div class="content-container">
+                <div class="item-list" id="itemList">
+                    <div class="empty-state">項目がありません</div>
+                </div>
+                <div class="editor-container">
+                    <textarea id="contentEditor" placeholder="内容を入力..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mutterings Container -->
+        <div class="mutterings-container">
+            <div class="mutterings-input-container">
+                <input type="text" id="mutteringInput" placeholder="今何してる？">
+            </div>
+            <div class="mutterings-timeline" id="mutteringsTimeline">
+                <div class="empty-state">つぶやきがありません</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sync Status Indicator -->
+    <div class="sync-indicator" id="syncIndicator">
+        <span class="sync-status" id="syncStatus"></span>
+        <span id="syncText">同期: 待機中</span>
+        <span class="loading" id="syncLoading" style="display: none;"></span>
+    </div>
+
+    <script>
+        // ============================================================================
+        // Configuration
+        // ============================================================================
+        const SYNC_ID = 'ouch_dict_' + (localStorage.getItem('ouch_sync_id') || crypto.randomUUID().replace(/-/g, ''));
+        const API_BASE = '';
+        const ADMIN_TOKEN = localStorage.getItem('ouch_admin_token') || '';
+
+        // ============================================================================
+        // State
+        // ============================================================================
+        let entries = [];
+        let mutterings = [];
+        let currentEntryId = null;
+        let isSyncing = false;
+        let lastSyncTime = null;
+
+        // ============================================================================
+        // DOM Elements
+        // ============================================================================
+        const searchInput = document.getElementById('searchInput');
+        const readingContainer = document.getElementById('readingContainer');
+        const readingInput = document.getElementById('readingInput');
+        const itemList = document.getElementById('itemList');
+        const contentEditor = document.getElementById('contentEditor');
+        const mutteringInput = document.getElementById('mutteringInput');
+        const mutteringsTimeline = document.getElementById('mutteringsTimeline');
+        const syncStatus = document.getElementById('syncStatus');
+        const syncText = document.getElementById('syncText');
+        const syncLoading = document.getElementById('syncLoading');
+        const syncIndicator = document.getElementById('syncIndicator');
+
+        // ============================================================================
+        // Japanese Character Normalization
+        // ============================================================================
+        const hiraganaToKatakana = (str) => {
+            return str.replace(/[\u3041-\u3096]/g, (match) => {
+                return String.fromCharCode(match.charCodeAt(0) + 0x60);
+            });
+        };
+
+        const fullWidthToHalfWidth = (str) => {
+            return str.replace(/[\uFF01-\uFF5E]/g, (match) => {
+                const charCode = match.charCodeAt(0);
+                if (charCode >= 0xFF01 && charCode <= 0xFF5E) {
+                    return String.fromCharCode(charCode - 0xFEE0);
+                }
+                return match;
+            });
+        };
+
+        const normalizeSearch = (str) => {
+            let result = fullWidthToHalfWidth(str);
+            result = hiraganaToKatakana(result);
+            return result.toLowerCase();
+        };
+
+        // ============================================================================
+        // LocalStorage Management
+        // ============================================================================
+        const saveToLocalStorage = () => {
+            localStorage.setItem('ouch_entries', JSON.stringify(entries));
+            localStorage.setItem('ouch_mutterings', JSON.stringify(mutterings));
+            localStorage.setItem('ouch_sync_id', SYNC_ID);
+        };
+
+        const loadFromLocalStorage = () => {
+            try {
+                const savedEntries = localStorage.getItem('ouch_entries');
+                const savedMutterings = localStorage.getItem('ouch_mutterings');
+
+                if (savedEntries) {
+                    entries = JSON.parse(savedEntries);
+                }
+                if (savedMutterings) {
+                    mutterings = JSON.parse(savedMutterings);
+                }
+            } catch (e) {
+                console.error('Error loading from localStorage:', e);
+            }
+        };
+
+        // ============================================================================
+        // API Functions
+        // ============================================================================
+        const apiFetch = async (endpoint, options = {}) => {
+            const headers = {
+                'Content-Type': 'application/json',
+                ...options.headers
+            };
+
+            if (ADMIN_TOKEN) {
+                headers['X-Access-Token'] = ADMIN_TOKEN;
+            }
+
+            try {
+                const response = await fetch(API_BASE + endpoint, {
+                    ...options,
+                    headers
+                });
+
+                if (!response.ok) {
+                    const error = await response.text();
+                    console.error('API Error:', error);
+                    return null;
+                }
+
+                return await response.json();
+            } catch (e) {
+                console.error('Fetch error:', e);
+                return null;
+            }
+        };
+
+        const syncToServer = async () => {
+            if (!ADMIN_TOKEN || isSyncing) return;
+
+            isSyncing = true;
+            updateSyncStatus('syncing');
+            syncLoading.style.display = 'inline-block';
+            syncText.textContent = '同期中...';
+
+            try {
+                const syncData = {
+                    sync_id: SYNC_ID,
+                    ciphertext: btoa(JSON.stringify({
+                        entries,
+                        mutterings,
+                        updated_at: new Date().toISOString()
+                    })),
+                    iv: crypto.randomUUID(),
+                    updated_at: new Date().toISOString()
+                };
+
+                const result = await apiFetch('/api/push', {
+                    method: 'POST',
+                    body: JSON.stringify(syncData)
+                });
+
+                if (result && result.applied) {
+                    lastSyncTime = new Date();
+                    localStorage.setItem('ouch_last_sync', lastSyncTime.toISOString());
+                    syncText.textContent = '同期完了: ' + new Date().toLocaleTimeString();
+                } else {
+                    syncText.textContent = '同期: 更新なし';
+                }
+            } catch (e) {
+                console.error('Sync error:', e);
+                syncText.textContent = '同期エラー';
+            } finally {
+                isSyncing = false;
+                syncLoading.style.display = 'none';
+                setTimeout(() => {
+                    updateSyncStatus(ADMIN_TOKEN ? 'connected' : 'disconnected');
+                    syncText.textContent = ADMIN_TOKEN ? '同期: 待機中' : '同期: 未接続';
+                }, 2000);
+            }
+        };
+
+        const syncFromServer = async () => {
+            if (!ADMIN_TOKEN || isSyncing) return;
+
+            isSyncing = true;
+            updateSyncStatus('syncing');
+            syncLoading.style.display = 'inline-block';
+            syncText.textContent = 'データ取得中...';
+
+            try {
+                const result = await apiFetch(`/api/pull?sync_id=${SYNC_ID}`);
+
+                if (result && result.found) {
+                    const data = JSON.parse(atob(result.ciphertext));
+
+                    if (data.entries && data.mutterings) {
+                        entries = data.entries;
+                        mutterings = data.mutterings;
+                        saveToLocalStorage();
+                        renderEntries();
+                        renderMutterings();
+                        syncText.textContent = 'データ取得完了: ' + new Date().toLocaleTimeString();
+                    }
+                } else {
+                    syncText.textContent = 'データなし';
+                }
+            } catch (e) {
+                console.error('Sync from server error:', e);
+                syncText.textContent = '取得エラー';
+            } finally {
+                isSyncing = false;
+                syncLoading.style.display = 'none';
+                setTimeout(() => {
+                    updateSyncStatus(ADMIN_TOKEN ? 'connected' : 'disconnected');
+                    syncText.textContent = ADMIN_TOKEN ? '同期: 待機中' : '同期: 未接続';
+                }, 2000);
+            }
+        };
+
+        const exportFlag = async () => {
+            if (!ADMIN_TOKEN) return;
+
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                const result = await apiFetch('/api/export-flag', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        sync_id: SYNC_ID
+                    })
+                });
+
+                if (result && result.claimed) {
+                    localStorage.setItem('ouch_last_export', today);
+                }
+            } catch (e) {
+                console.error('Export flag error:', e);
+            }
+        };
+
+        // ============================================================================
+        // UI Rendering
+        // ============================================================================
+        const renderEntries = (filter = '') => {
+            const filteredEntries = filter
+                ? entries.filter(entry =>
+                    normalizeSearch(entry.title).includes(normalizeSearch(filter)) ||
+                    normalizeSearch(entry.reading || '').includes(normalizeSearch(filter)) ||
+                    normalizeSearch(entry.content).includes(normalizeSearch(filter))
+                )
+                : entries;
+
+            if (filteredEntries.length === 0) {
+                itemList.innerHTML = '<div class="empty-state">項目が見つかりません</div>';
+                return;
+            }
+
+            itemList.innerHTML = filteredEntries.map(entry => `
+                <div class="item ${currentEntryId === entry.id ? 'active' : ''}" data-id="${entry.id}">
+                    <div class="title">${escapeHtml(entry.title)}</div>
+                    ${entry.reading ? `<div class="reading">${escapeHtml(entry.reading)}</div>` : ''}
+                </div>
+            `).join('');
+
+            itemList.querySelectorAll('.item').forEach(item => {
+                item.addEventListener('click', () => {
+                    selectEntry(item.dataset.id);
+                });
+            });
+        };
+
+        const renderMutterings = (filter = '') => {
+            const filteredMutterings = filter
+                ? mutterings.filter(m => normalizeSearch(m.content).includes(normalizeSearch(filter)))
+                : mutterings;
+
+            if (filteredMutterings.length === 0) {
+                mutteringsTimeline.innerHTML = '<div class="empty-state">つぶやきがありません</div>';
+                return;
+            }
+
+            mutteringsTimeline.innerHTML = filteredMutterings.map(m => `
+                <div class="muttering-item" data-id="${m.id}">
+                    <div class="content">${escapeHtml(m.content)}</div>
+                    <div class="timestamp">${formatTimestamp(m.created_at)}</div>
+                </div>
+            `).join('');
+
+            mutteringsTimeline.querySelectorAll('.muttering-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    if (confirm('このつぶやきを削除しますか？')) {
+                        deleteMuttering(item.dataset.id);
+                    }
+                });
+            });
+        };
+
+        const updateSyncStatus = (status) => {
+            syncStatus.className = 'sync-status ' + status;
+        };
+
+        // ============================================================================
+        // Entry Management
+        // ============================================================================
+        const selectEntry = (id) => {
+            const entry = entries.find(e => e.id === id);
+            if (!entry) return;
+
+            currentEntryId = id;
+            contentEditor.value = entry.content;
+            readingInput.value = entry.reading || '';
+            readingContainer.style.display = 'flex';
+
+            renderEntries(searchInput.value);
+            contentEditor.focus();
+        };
+
+        const createNewEntry = () => {
+            const newEntry = {
+                id: Date.now().toString(),
+                title: searchInput.value.trim() || '新規項目',
+                reading: '',
+                content: '',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+
+            entries.unshift(newEntry);
+            currentEntryId = newEntry.id;
+            contentEditor.value = '';
+            readingInput.value = '';
+            readingContainer.style.display = 'flex';
+
+            renderEntries();
+            searchInput.value = '';
+            readingInput.focus();
+        };
+
+        const saveEntry = () => {
+            if (!currentEntryId) {
+                createNewEntry();
+                return;
+            }
+
+            const entry = entries.find(e => e.id === currentEntryId);
+            if (!entry) return;
+
+            entry.content = contentEditor.value;
+            entry.reading = readingInput.value;
+            entry.updated_at = new Date().toISOString();
+
+            if (entry.title === '新規項目' && entry.content) {
+                entry.title = entry.content.split('\n')[0].substring(0, 30);
+            }
+
+            saveToLocalStorage();
+            renderEntries(searchInput.value);
+            syncToServer();
+            exportFlag();
+        };
+
+        const deleteEntry = () => {
+            if (!currentEntryId) return;
+
+            if (confirm('この項目を削除しますか？')) {
+                entries = entries.filter(e => e.id !== currentEntryId);
+                currentEntryId = null;
+                contentEditor.value = '';
+                readingInput.value = '';
+                readingContainer.style.display = 'none';
+
+                saveToLocalStorage();
+                renderEntries();
+                syncToServer();
+            }
+        };
+
+        // ============================================================================
+        // Muttering Management
+        // ============================================================================
+        const addMuttering = () => {
+            const content = mutteringInput.value.trim();
+            if (!content) return;
+
+            const newMuttering = {
+                id: Date.now().toString(),
+                content,
+                created_at: new Date().toISOString()
+            };
+
+            mutterings.unshift(newMuttering);
+            mutteringInput.value = '';
+
+            saveToLocalStorage();
+            renderMutterings();
+            syncToServer();
+        };
+
+        const deleteMuttering = (id) => {
+            mutterings = mutterings.filter(m => m.id !== id);
+            saveToLocalStorage();
+            renderMutterings();
+            syncToServer();
+        };
+
+        // ============================================================================
+        // Event Listeners
+        // ============================================================================
+        searchInput.addEventListener('input', () => {
+            renderEntries(searchInput.value);
+            renderMutterings(searchInput.value);
+        });
+
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                createNewEntry();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                searchInput.value = '';
+                renderEntries();
+                renderMutterings();
+            }
+        });
+
+        readingInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                contentEditor.focus();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                readingInput.value = '';
+                if (currentEntryId) {
+                    const entry = entries.find(e => e.id === currentEntryId);
+                    if (entry) {
+                        entry.reading = '';
+                        saveToLocalStorage();
+                        syncToServer();
+                    }
+                }
+            }
+        });
+
+        contentEditor.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                saveEntry();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                contentEditor.value = '';
+                if (currentEntryId) {
+                    const entry = entries.find(e => e.id === currentEntryId);
+                    if (entry) {
+                        entry.content = '';
+                        saveToLocalStorage();
+                        syncToServer();
+                    }
+                }
+            }
+        });
+
+        // Auto-save on input change
+        let autoSaveTimeout;
+
+        contentEditor.addEventListener('input', () => {
+            clearTimeout(autoSaveTimeout);
+            autoSaveTimeout = setTimeout(() => {
+                if (currentEntryId) {
+                    const entry = entries.find(e => e.id === currentEntryId);
+                    if (entry) {
+                        entry.content = contentEditor.value;
+                        entry.updated_at = new Date().toISOString();
+                        saveToLocalStorage();
+                        syncToServer();
+                    }
+                }
+            }, 1000);
+        });
+
+        readingInput.addEventListener('input', () => {
+            clearTimeout(autoSaveTimeout);
+            autoSaveTimeout = setTimeout(() => {
+                if (currentEntryId) {
+                    const entry = entries.find(e => e.id === currentEntryId);
+                    if (entry) {
+                        entry.reading = readingInput.value;
+                        entry.updated_at = new Date().toISOString();
+                        saveToLocalStorage();
+                        syncToServer();
+                        renderEntries(searchInput.value);
+                    }
+                }
+            }, 1000);
+        });
+
+        mutteringInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addMuttering();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                mutteringInput.value = '';
+            }
+        });
+
+        // Click on item list to select
+        itemList.addEventListener('click', (e) => {
+            const item = e.target.closest('.item');
+            if (item) {
+                selectEntry(item.dataset.id);
+            }
+        });
+
+        // ============================================================================
+        // Utility Functions
+        // ============================================================================
+        const escapeHtml = (text) => {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        };
+
+        const formatTimestamp = (timestamp) => {
+            const date = new Date(timestamp);
+            return date.toLocaleString('ja-JP', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        };
+
+        // ============================================================================
+        // Periodic sync
+        // ============================================================================
+        setInterval(() => {
+            if (navigator.onLine && ADMIN_TOKEN) {
+                syncToServer();
+            }
+        }, 30000);
+
+        // Online/offline detection
+        window.addEventListener('online', () => {
+            updateSyncStatus('connected');
+            syncText.textContent = '同期: 待機中';
+            if (ADMIN_TOKEN) {
+                syncToServer();
+                syncFromServer();
+            }
+        });
+
+        window.addEventListener('offline', () => {
+            updateSyncStatus('disconnected');
+            syncText.textContent = '同期: オフライン';
+        });
+
+        // ============================================================================
+        // PWA Registration
+        // ============================================================================
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+
+        // ============================================================================
+        // Initialize
+        // ============================================================================
+        const init = () => {
+            loadFromLocalStorage();
+
+            // Check if we have admin token from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            if (token) {
+                localStorage.setItem('ouch_admin_token', token);
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+
+            // Initialize sync status
+            if (ADMIN_TOKEN) {
+                updateSyncStatus('connected');
+                syncText.textContent = '同期: 待機中';
+                syncFromServer();
+            } else {
+                updateSyncStatus('disconnected');
+                syncText.textContent = '同期: 未接続';
+            }
+
+            renderEntries();
+            renderMutterings();
+
+            // Focus on search input initially
+            searchInput.focus();
+        };
+
+        // Start the app
+        init();
+    </script>
+</body>
+</html>
