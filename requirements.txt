@@ -1,0 +1,25 @@
+could not import "app.py":
+Traceback (most recent call last):
+File "/var/task/_vendor/vercel_runtime/vc_init.py", line 622, in <module>
+__vc_module = import_module(_entrypoint_modname, _entrypoint_abs)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/var/task/_vendor/vercel_runtime/resolver.py", line 24, in import_module
+spec.loader.exec_module(mod)
+File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+File "/var/task/app.py", line 7, in <module>
+import psycopg2
+ModuleNotFoundError: No module named 'psycopg2'
+could not import "app.py":
+Traceback (most recent call last):
+File "/var/task/_vendor/vercel_runtime/vc_init.py", line 622, in <module>
+__vc_module = import_module(_entrypoint_modname, _entrypoint_abs)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/var/task/_vendor/vercel_runtime/resolver.py", line 24, in import_module
+spec.loader.exec_module(mod)
+File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+File "/var/task/app.py", line 7, in <module>
+import psycopg2
+ModuleNotFoundError: No module named 'psycopg2'
+Python process exited with exit status: 1. The logs above can help with debugging the issue.
